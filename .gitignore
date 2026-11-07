@@ -1,0 +1,44 @@
+# Binaries
+/bin/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+webhook-platform
+
+# Test binaries and coverage
+*.test
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Go workspace
+go.work
+go.work.sum
+
+# Vendored dependencies (uncomment if you don't commit vendor/)
+# vendor/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local data and logs
+*.log
+tmp/
+/data/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
