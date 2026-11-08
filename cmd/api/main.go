@@ -25,7 +25,7 @@ func run() error {
 		return err
 	}
 
-	lg := logger.NewStdoutLogger(cfg)
+	lg := logger.NewStdoutLogger(cfg.LogLevel, cfg.LogFormat)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", health)
@@ -55,8 +55,6 @@ func run() error {
 
 	select {
 	case err := <-errChan:
-		if err != nil {
-		}
 		return err
 	case <-ctx.Done():
 		lg.Info("shutting down server")
@@ -67,7 +65,8 @@ func run() error {
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		lg.Error("failed to shutdown server", "error", err)
+		errChan <- err
+		lg.Info("server shutdown error", "error", err)
 		_ = srv.Close()
 	}
 	return <-errChan
@@ -85,8 +84,5 @@ func health(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write(bytes); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	w.Write(bytes)
 }
