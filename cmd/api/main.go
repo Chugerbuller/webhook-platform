@@ -1,3 +1,4 @@
+// Command api запускает HTTP-сервер webhook-platform.
 package main
 
 import (
@@ -64,15 +65,22 @@ func run() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		errChan <- err
-		lg.Info("server shutdown error", "error", err)
+	shutdownErr := srv.Shutdown(shutdownCtx)
+	if shutdownErr != nil {
+		lg.Error("graceful shutdown failed, forcing close", "error", shutdownErr)
 		_ = srv.Close()
 	}
-	return <-errChan
+
+	serveErr := <-errChan // дождаться, пока горутина завершится
+
+	if err := errors.Join(shutdownErr, serveErr); err != nil {
+		return err
+	}
+	lg.Info("server stopped")
+	return nil
 
 }
-func health(w http.ResponseWriter, r *http.Request) {
+func health(w http.ResponseWriter, _ *http.Request) {
 	response := struct {
 		Health string `json:"health"`
 	}{
@@ -84,5 +92,5 @@ func health(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(bytes)
+	_, _ = w.Write(bytes)
 }
