@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/chugerbuller/webhook-platform/internal/config"
 	"github.com/chugerbuller/webhook-platform/internal/logger"
@@ -17,8 +16,7 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("Error in starting server: %v", err)
-		return
+		log.Fatalf("api error: %v", err)
 	}
 }
 func run() error {
@@ -27,7 +25,7 @@ func run() error {
 		return err
 	}
 
-	logger := logger.NewStdoutLogger(cfg)
+	lg := logger.NewStdoutLogger(cfg)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", health)
@@ -45,13 +43,11 @@ func run() error {
 
 	errChan := make(chan error, 1)
 	go func() {
-
+		lg.Info("starting server", "addr", cfg.Addr())
 		err := srv.ListenAndServe()
 		if errors.Is(err, http.ErrServerClosed) {
-			logger.Log.Info("server closed")
 			errChan <- nil
 		} else if err != nil {
-			logger.Log.Error("failed to start server", "error", err)
 			errChan <- err
 		}
 		close(errChan)
@@ -60,19 +56,18 @@ func run() error {
 	select {
 	case err := <-errChan:
 		if err != nil {
-			logger.Log.Error("server error", "error", err)
 		}
 		return err
 	case <-ctx.Done():
-		logger.Log.Info("shutting down server")
+		lg.Info("shutting down server")
 		stop()
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		logger.Log.Error("failed to shutdown server", "error", err)
+		lg.Error("failed to shutdown server", "error", err)
 		_ = srv.Close()
 	}
 	return <-errChan

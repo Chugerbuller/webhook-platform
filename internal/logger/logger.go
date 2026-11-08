@@ -7,11 +7,7 @@ import (
 	"github.com/chugerbuller/webhook-platform/internal/config"
 )
 
-type Logger struct {
-	Log *slog.Logger
-}
-
-func NewStdoutLogger(cfg *config.Config) *Logger {
+func NewStdoutLogger(cfg *config.Config) *slog.Logger {
 	opts := slog.HandlerOptions{Level: cfg.LogLevel}
 
 	var h slog.Handler = slog.NewJSONHandler(os.Stdout, &opts)
@@ -20,5 +16,5 @@ func NewStdoutLogger(cfg *config.Config) *Logger {
 	}
 	logger := slog.New(h)
 
-	return &Logger{Log: logger}
+	return logger
 }
