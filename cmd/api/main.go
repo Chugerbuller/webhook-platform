@@ -4,36 +4,33 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log/slog"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/chugerbuller/webhook-platform/internal/cfg"
+	"github.com/chugerbuller/webhook-platform/internal/config"
+	"github.com/chugerbuller/webhook-platform/internal/logger"
 )
 
 func main() {
 	if err := run(); err != nil {
-		os.Exit(1)
+		log.Fatalf("Error in starting server: %v", err)
+		return
 	}
 }
 func run() error {
-	cfg, err := cfg.LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		return err
 	}
 
-	opts := slog.HandlerOptions{Level: cfg.LogLevel}
-
-	var h slog.Handler = slog.NewJSONHandler(os.Stdout, &opts)
-	if cfg.LogFormat == "text" {
-		h = slog.NewTextHandler(os.Stdout, &opts)
-	}
-	logger := slog.New(h)
+	logger := logger.NewStdoutLogger(cfg)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", health)
+	mux.HandleFunc("GET /healthz", health)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
@@ -43,18 +40,18 @@ func run() error {
 		WriteTimeout:      cfg.WriteTimeout,
 		IdleTimeout:       cfg.IdleTimeout,
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	errChan := make(chan error, 1)
 	go func() {
 
-		err := http.ListenAndServe(":8080", mux)
-		if errors.Is(http.ErrServerClosed, err) {
-			logger.Info("server closed")
+		err := srv.ListenAndServe()
+		if errors.Is(err, http.ErrServerClosed) {
+			logger.Log.Info("server closed")
 			errChan <- nil
 		} else if err != nil {
-			logger.Error("failed to start server", "error", err)
+			logger.Log.Error("failed to start server", "error", err)
 			errChan <- err
 		}
 		close(errChan)
@@ -63,11 +60,11 @@ func run() error {
 	select {
 	case err := <-errChan:
 		if err != nil {
-			fatal(logger, "server error", err)
+			logger.Log.Error("server error", "error", err)
 		}
 		return err
 	case <-ctx.Done():
-		logger.Info("shutting down server")
+		logger.Log.Info("shutting down server")
 		stop()
 	}
 
@@ -75,15 +72,11 @@ func run() error {
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		logger.Error("failed to shutdown server", "error", err)
+		logger.Log.Error("failed to shutdown server", "error", err)
 		_ = srv.Close()
 	}
 	return <-errChan
 
-}
-func fatal(logger *slog.Logger, msg string, err error) {
-	logger.Error(msg, "error", err)
-	os.Exit(1)
 }
 func health(w http.ResponseWriter, r *http.Request) {
 	response := struct {
@@ -96,5 +89,9 @@ func health(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Write(bytes)
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write(bytes); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
