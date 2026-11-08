@@ -1,4 +1,4 @@
-package cfg
+package config
 
 import (
 	"fmt"
@@ -67,7 +67,7 @@ func LoadConfig() (*Config, error) {
 	}
 
 	if len(errs) > 0 {
-		return &Config{}, fmt.Errorf("неверная конфигурация: %s", strings.Join(errs, "; "))
+		return nil, fmt.Errorf("неверная конфигурация: %v", strings.Join(errs, " ; "))
 	}
 
 	return cfg, nil
