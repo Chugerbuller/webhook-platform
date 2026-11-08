@@ -1,0 +1,19 @@
+# Формат golangci-lint v2 (в v1 этого ключа не было)
+version: "2"
+
+linters:
+  # В v2 вместо disable-all: true используется default: none.
+  # Включаем только то, что перечислено ниже.
+  default: none
+  enable:
+    - errcheck     # непроверенные ошибки
+    - govet        # подозрительные конструкции (go vet)
+    - staticcheck  # в v2 включает бывшие gosimple и stylecheck
+    - unused       # неиспользуемый код
+    - gosec        # проблемы безопасности
+    - revive       # стиль и идиомы (замена golint)
+
+  settings:
+    govet:
+      enable:
+        - nilness
