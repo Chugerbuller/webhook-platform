@@ -1,5 +1,4 @@
 // Package logger предоставляет функции для создания логгера.
-
 package logger
 
 import (
