@@ -30,7 +30,7 @@ func (c *Config) Addr() string {
 func LoadConfig() (*Config, error) {
 
 	var (
-		cfg  *Config = &Config{}
+		cfg = &Config{}
 		errs []string
 	)
 	fail := func(err error) {
