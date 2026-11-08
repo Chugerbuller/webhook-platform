@@ -1,3 +1,4 @@
+// Package config загружает конфигурацию приложения из переменных окружения.
 package config
 
 import (
@@ -8,7 +9,7 @@ import (
 	"strings"
 	"time"
 )
-
+// Config содержит конфигурацию приложения.
 type Config struct {
 	Port string
 
@@ -21,10 +22,11 @@ type Config struct {
 	LogLevel  slog.Level
 	LogFormat string // "json" | "text"
 }
-
+// Addr возвращает адрес для прослушивания в формате ":<port>".
 func (c *Config) Addr() string {
 	return ":" + c.Port
 }
+// LoadConfig загружает конфигурацию из переменных окружения и возвращает объект Config.
 func LoadConfig() (*Config, error) {
 
 	var (
